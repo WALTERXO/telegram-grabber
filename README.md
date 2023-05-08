@@ -29,7 +29,7 @@ Python:
 
 # Как запустить
 
-1. Создать телеграм-бота. Для этого нужно написать боту [BotFather]([https://telegram.me/botfather]) и следовать инструкциям. После этого сохраните токен бота.
+1. Создать телеграм-бота. Для этого нужно написать боту [BotFather](https://telegram.me/botfather) и следовать инструкциям. После этого сохраните токен бота.
 2. Получить api_id, api_hash. Сделать это можно на сайте [my.telegram.org]([url](https://my.telegram.org/auth)).
 3. Задать переменные api_id, api_hash и bot_token в файле main.py.
 
