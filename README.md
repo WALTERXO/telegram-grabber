@@ -35,8 +35,7 @@ Python:
 
 ![image](https://user-images.githubusercontent.com/91873172/236864151-bc15d37b-d1dc-4abf-bdf7-71c8268d4d3f.png)
 
-Запустить бота 
-мандой:
+Запустить бота командой:
 
     python main.py
 
