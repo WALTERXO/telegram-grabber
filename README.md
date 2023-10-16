@@ -14,7 +14,7 @@ Python:
 
 Библиотека aiogram:
 
-    pip install aiogram
+    pip install aiogram 2.25.1
 
 Библиотека telethon:   
  
