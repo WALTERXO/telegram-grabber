@@ -67,9 +67,10 @@ id нужного канала можно узнать переслав любо
 ![image](https://user-images.githubusercontent.com/91873172/236871955-47e04ae3-5db4-4f55-b2f6-f95f28b1c6e0.png)
 
 
-Для корректной работы уведомлений замените этот id на ваш:
+**Также замените на свой id аккаунта:**
 ![image](https://github.com/WALTERXO/telegram-grabber/assets/91873172/76fa8c23-f2c2-4890-a930-6141b4fbde77)
 Брать тоже в [Get My ID](https://t.me/getmyid_bot) отсюда:
+
 ![image](https://github.com/WALTERXO/telegram-grabber/assets/91873172/10a83730-3708-47d7-a134-f700ef037c4d)
 
 
