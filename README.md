@@ -29,6 +29,8 @@
 ![image](https://user-images.githubusercontent.com/91873172/236864151-bc15d37b-d1dc-4abf-bdf7-71c8268d4d3f.png)
 
 4. Замените на свой id аккаунта:
+
+
 ![image](https://github.com/WALTERXO/telegram-grabber/assets/91873172/76fa8c23-f2c2-4890-a930-6141b4fbde77)
 Брать в [Get My ID](https://t.me/getmyid_bot) отсюда (отправить в бот любое сообщение, он выдаст ваш id):
 
