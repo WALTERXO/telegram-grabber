@@ -32,6 +32,7 @@
 
 
 ![image](https://github.com/WALTERXO/telegram-grabber/assets/91873172/76fa8c23-f2c2-4890-a930-6141b4fbde77)
+
 Брать в [Get My ID](https://t.me/getmyid_bot) отсюда (отправить в бот любое сообщение, он выдаст ваш id):
 
 ![image](https://github.com/WALTERXO/telegram-grabber/assets/91873172/10a83730-3708-47d7-a134-f700ef037c4d)
