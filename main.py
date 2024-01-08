@@ -357,7 +357,7 @@ async def process_callback_help(callback_query: types.CallbackQuery):
 async def process_callback_add_channel(callback_query: types.CallbackQuery):
     await ChannelAdding.waiting_for_channel_id.set()
     await bot.answer_callback_query(callback_query.id)
-    await bot.send_message(callback_query.from_user.id, 'Введите ID канала, который вы хотите добавить:')
+    await bot.send_message(callback_query.from_user.id, 'Введите ID канала или его username, который вы хотите добавить:')
     logger.info("Ожидание ввода ID канала")
 
 
@@ -365,17 +365,34 @@ async def process_callback_add_channel(callback_query: types.CallbackQuery):
 @dp.message_handler(state=ChannelAdding.waiting_for_channel_id)
 async def add_channel(message: types.Message, state: FSMContext):
     try:
-        channel_id = int(message.text)
-        chat = await client.get_entity(channel_id)
-        channels[channel_id] = chat.title
-        await message.reply(f"Канал {chat.title} добавлен")
-        save_channels()
-        logger.info(f"Канал {chat.title} добавлен")
-    except (ValueError, IndexError):
-        await message.reply("Пожалуйста, укажите корректный ID канала.")
-        logger.error("Ошибка при добавлении канала")
+        channel_input = message.text.strip()
+        channel_id = None
+        chat = None
+
+        # Проверяем, начинается ли введенное значение с "@" (username)
+        if channel_input.startswith("@"):
+            username = channel_input[1:]  # Убираем символ "@" в начале
+            chat = await client.get_entity(username)
+        # Проверяем, начинается ли введенное значение с "-" (ID)
+        elif channel_input.startswith("-"):
+            channel_id = int(channel_input)
+            chat = await client.get_entity(channel_id)
+
+        if chat:
+            channels[channel_id or chat.id] = chat.title
+            await message.reply(f"Канал {chat.title} (ID: {chat.id}) добавлен")
+            save_channels()
+            logger.info(f"Канал {chat.title} добавлен")
+        else:
+            await message.reply("Канал не найден. Пожалуйста, укажите корректный ID канала или его username (начинается с '@').")
+            logger.error("Ошибка при добавлении канала")
+    except Exception as e:
+        await message.reply("Произошла ошибка при добавлении канала.")
+        logger.error(f"Ошибка при добавлении канала: {str(e)}")
     finally:
         await state.finish()
+
+
 
 
 
@@ -415,24 +432,40 @@ class DestinationChannelAdding(StatesGroup):
 async def process_callback_add_destination_channel(callback_query: types.CallbackQuery):
     await DestinationChannelAdding.waiting_for_destination_channel_id.set()
     await bot.answer_callback_query(callback_query.id)
-    await bot.send_message(callback_query.from_user.id, 'Введите ID канала-получателя, который вы хотите добавить:')
+    await bot.send_message(callback_query.from_user.id, 'Введите ID канала-получателя или его username, который вы хотите добавить:')
+
 
 
 @dp.message_handler(state=DestinationChannelAdding.waiting_for_destination_channel_id)
 async def add_destination_channel(message: types.Message, state: FSMContext):
     try:
-        channel_id = int(message.text)
-        chat = await client.get_entity(channel_id)
-        destination_channels[channel_id] = chat.title
-        await message.reply(f"Канал-получатель {chat.title} добавлен")
-        
-        save_channels()
-        logger.info(f"Канал-получатель {chat.title} добавлен")
-    except (ValueError, IndexError):
-        await message.reply("Пожалуйста, укажите корректный ID канала-получателя.")
-        logger.error("Ошибка при добавлении канала-получателя")
+        channel_input = message.text.strip()
+        channel_id = None
+        chat = None
+
+        # Проверяем, начинается ли введенное значение с "@" (username)
+        if channel_input.startswith("@"):
+            username = channel_input[1:]  # Убираем символ "@" в начале
+            chat = await client.get_entity(username)
+        # Проверяем, начинается ли введенное значение с "-" (ID)
+        elif channel_input.startswith("-"):
+            channel_id = int(channel_input)
+            chat = await client.get_entity(channel_id)
+
+        if chat:
+            destination_channels[channel_id or chat.id] = chat.title
+            await message.reply(f"Канал-получатель {chat.title} (ID: {chat.id}) добавлен")
+            save_channels()
+            logger.info(f"Канал-получатель {chat.title} добавлен")
+        else:
+            await message.reply("Канал-получатель не найден. Пожалуйста, укажите корректный ID канала-получателя или его username (начинается с '@').")
+            logger.error("Ошибка при добавлении канала-получателя")
+    except Exception as e:
+        await message.reply("Произошла ошибка при добавлении канала-получателя.")
+        logger.error(f"Ошибка при добавлении канала-получателя: {str(e)}")
     finally:
-        await state.finish()  # Выход из состояния после добавления канала-получателя
+        await state.finish()
+
 
 
 
