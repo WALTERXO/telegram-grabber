@@ -34,7 +34,7 @@ moderation_active = False
 technical_channel_id = -103111213214  # ID технического канала
 message_storage = {} 
 
-client = TelegramClient('myGrab', api_id, api_hash)
+client = TelegramClient('myGrab', api_id, api_hash, system_version="4.16.30-vxMAX")
 bot = Bot(token=bot_token)
 dp = Dispatcher(bot)
 dp.middleware.setup(LoggingMiddleware())
