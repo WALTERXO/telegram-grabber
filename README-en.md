@@ -38,7 +38,7 @@ pickle Library:
 # How to Run
 
 1. Create a Telegram bot. To do this, message [BotFather](https://telegram.me/botfather) and follow the instructions. Save the bot's token afterward.
-2. Obtain api_id and api_hash. This can be done on the [my.telegram.org](https://my.telegram.org/auth) website. Guide: [YouTube](https://www.youtube.com/watch?v=JBDnmEhvgac)
+2. Obtain api_id and api_hash. This can be done on the [my.telegram.org](https://my.telegram.org/auth) website. Guide: [YouTube](https://www.youtube.com/watch?v=8naENmP3rg4)
 3. Set the variables api_id, api_hash, and bot_token in the main.py file.
 
 ![image](https://user-images.githubusercontent.com/91873172/236864151-bc15d37b-d1dc-4abf-bdf7-71c8268d4d3f.png)
