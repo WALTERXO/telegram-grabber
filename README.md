@@ -107,7 +107,7 @@ id нужного канала можно узнать переслав любо
 Даже если прокси HTTPS, то тут всё равно должно быть http:
 ![image](https://github.com/WALTERXO/telegram-grabber/assets/91873172/36bdced9-73ef-4d94-8fe5-655c02fe69a6)
 
-openai_api_key берётся на сайте openai https://platform.openai.com/api-keys приналичии бюджета в https://platform.openai.com/usage . При отсутствии прокси и openai_api_key, то оставьте эти данные пустыми, либо за покупкой можно обратиться ко мне.
+openai_api_key берётся на сайте openai https://platform.openai.com/api-keys при наличии бюджета в https://platform.openai.com/usage . При отсутствии прокси и openai_api_key, то оставьте эти данные пустыми, либо за покупкой можно обратиться ко мне.
 
 
 
