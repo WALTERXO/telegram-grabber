@@ -91,7 +91,8 @@ id нужного канала можно узнать переслав любо
 ![image](https://github.com/WALTERXO/telegram-grabber/assets/91873172/cbdf1fb7-e5b0-4870-b01a-59a514785abd)
 
 
-![image](https://github.com/WALTERXO/telegram-grabber/assets/91873172/da314d89-fc1f-4d48-885b-d801ed31df1c)
+![image](https://github.com/WALTERXO/telegram-grabber/assets/91873172/d6cf2ccf-f474-4bf0-b371-d3ad3cf0c77e)
+
 
 Для его работы создаём новый пустой канал и вводим id этого канала в technical_channel_id в файле config.py. (получить id можно по аналогии как с остальными каналами). Не забываем назначить бота администратором технического канала.
 
