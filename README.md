@@ -103,7 +103,11 @@ id нужного канала можно узнать переслав любо
 
 ![image](https://github.com/WALTERXO/telegram-grabber/assets/91873172/ac6f8843-372a-4d73-8c1d-09c4a36aa491)
 
-**Рерайт текста с Chat GPT**. В режиме модерации есть кнопка "Рерайт текста". Для её работы заполняем proxy_url и openai_api_key в файле config.py. proxy_url должны быть формата HTTP или HTTPS. Если у вас прокси с логином и паролем, то в настройках прокси ставьте авторизацию по вашему ip. openai_api_key берётся на сайте openai https://platform.openai.com/api-keys приналичии бюджета в https://platform.openai.com/usage . При отсутствии прокси и openai_api_key за покупкой можно обратиться ко мне.
+**Рерайт текста с Chat GPT**. В режиме модерации есть кнопка "Рерайт текста". Для её работы заполняем proxy_url и openai_api_key в файле config.py. proxy_url должны быть формата HTTP или HTTPS. Если у вас прокси с логином и паролем, то в настройках прокси ставьте авторизацию по вашему ip. 
+Даже если прокси HTTPS, то тут всё равно должно быть http:
+![image](https://github.com/WALTERXO/telegram-grabber/assets/91873172/36bdced9-73ef-4d94-8fe5-655c02fe69a6)
+
+openai_api_key берётся на сайте openai https://platform.openai.com/api-keys приналичии бюджета в https://platform.openai.com/usage . При отсутствии прокси и openai_api_key за покупкой можно обратиться ко мне.
 
 
 
