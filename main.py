@@ -4,8 +4,6 @@ from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.types import ParseMode
-from aiogram.utils import executor
 import asyncio
 import logging
 import os
@@ -14,6 +12,8 @@ import re
 import sys
 from telethon import TelegramClient, events
 from telethon.tl.types import InputMessagesFilterPhotos, MessageMediaPhoto, MessageMediaDocument
+from config import api_id, api_hash, bot_token, my_id, technical_channel_id, new_link, replase_link, proxy_url, openai_api_key
+import httpx
 
 
 
@@ -25,13 +25,10 @@ class ChannelAdding(StatesGroup):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-api_id = 232113126
-api_hash = '96046f23213123213123748'
-bot_token = '6933022445:321321321312321jfEH_miUQ'
 editing_message_id = None
 
+
 moderation_active = False
-technical_channel_id = -103111213214  # ID технического канала
 message_storage = {} 
 
 client = TelegramClient('myGrab', api_id, api_hash, system_version="4.16.30-vxMAX")
@@ -71,8 +68,11 @@ def save_channels():
 
 
 def replace_link(text, new_link):
-    url_pattern = re.compile(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
-    return url_pattern.sub(new_link, text)
+    # Ищем ссылки с Markdown форматированием [text](http://url)
+    markdown_url_pattern = re.compile(r'\[([^\]]+)\]\(http[s]?://[^\)]+\)')
+    # Заменяем URL, сохраняя оригинальный текст ссылки
+    return markdown_url_pattern.sub(r'[\1](' + new_link + ')', text)
+
 
 
 def replace_at_word(text, new_word):
@@ -80,8 +80,6 @@ def replace_at_word(text, new_word):
         return text
     return re.sub(r'@(\w+)', new_word, text)
 
-
-new_link = "http://t.me/test"
 
 
 async def send_media(message, destination_channel_id, allow_forward=True):
@@ -95,9 +93,10 @@ async def send_media(message, destination_channel_id, allow_forward=True):
         return await client.send_message(destination_channel_id, message.text)
 
 
+
 # Отправка уведомления в Telegram чат
 async def send_notification(message):
-    chat_id = '33213126'  # Замените на ваш ID чата
+    chat_id = my_id 
     await bot.send_message(chat_id, message)
 
 
@@ -208,21 +207,13 @@ async def process_edited(callback_query: types.CallbackQuery):
 
 
 
-
-
-
-
-
-
-
-
 @client.on(events.NewMessage(chats=channels))
 async def my_event_handler(event):
     if event.message.grouped_id:
         return
 
     original_text = event.message.text
-    updated_text = replace_link(replace_at_word(original_text, "@test"), new_link)
+    updated_text = replace_link(replace_at_word(original_text, replase_link), new_link)
 
     if moderation_active:
         # Отправляем сообщение на технический канал для модерации
@@ -233,7 +224,8 @@ async def my_event_handler(event):
         moderation_keyboard = InlineKeyboardMarkup(row_width=3).add(
             InlineKeyboardButton("Отправить", callback_data=f'send_{sent_message.id}'),
             InlineKeyboardButton("Отклонить", callback_data=f'decline_{sent_message.id}'),
-            InlineKeyboardButton("Отредактировано", callback_data=f'edited_{sent_message.id}')
+            InlineKeyboardButton("Отредактировано", callback_data=f'edited_{sent_message.id}'),
+            InlineKeyboardButton("Рерайт текста", callback_data=f'rewrite_{sent_message.id}')
         )
         await bot.send_message(technical_channel_id, "Выберите действие:", reply_markup=moderation_keyboard)
         return
@@ -258,7 +250,7 @@ async def album_event_handler(event):
 
     for message in grouped_media:
         original_text = message.text
-        updated_text = replace_link(replace_at_word(original_text, "@test"), new_link)
+        updated_text = replace_link(replace_at_word(original_text, replase_link), new_link)
         updated_texts.append(updated_text)
         media_list.append(message.media)
 
@@ -272,10 +264,12 @@ async def album_event_handler(event):
         message_storage[last_message_id] = sent_messages
 
         # Отправка кнопок после сообщения
-        moderation_keyboard = InlineKeyboardMarkup(row_width=3).add(
+        moderation_keyboard = InlineKeyboardMarkup(row_width=2).add(
             InlineKeyboardButton("Отправить", callback_data=f'send_{last_message_id}'),
             InlineKeyboardButton("Отклонить", callback_data=f'decline_{last_message_id}'),
             InlineKeyboardButton("Отредактировано", callback_data=f'edited_{last_message_id}')
+            
+
         )
         await bot.send_message(technical_channel_id, "Выберите действие:", reply_markup=moderation_keyboard)
         return
@@ -284,6 +278,58 @@ async def album_event_handler(event):
         await client.send_file(destination_channel_id, media_list, caption=updated_caption)
 
     logger.info(f"Альбом переслан: {updated_caption}")
+
+
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith('rewrite_'))
+async def process_rewrite(callback_query: types.CallbackQuery):
+    message_id = int(callback_query.data.split('_')[1])
+
+    if message_id in message_storage:
+        original_message = message_storage[message_id]
+        original_text = original_message.text if original_message.text else ""
+
+        rewritten_text = await rewrite_text_with_chatgpt(original_text, openai_api_key)
+
+        await client.edit_message(technical_channel_id, message_id, rewritten_text)
+        await bot.answer_callback_query(callback_query.id, "Текст переформулирован.")
+
+proxies = {
+    "http://": proxy_url,
+    "https://": proxy_url
+}
+
+
+
+
+async def rewrite_text_with_chatgpt(text, openai_api_key):
+    prompt_text = "Переформулируй этот текст: " + text
+    json_data = {
+        "model": "gpt-3.5-turbo",
+        "messages": [{"role": "user", "content": prompt_text}]
+    }
+    headers = {"Authorization": f"Bearer {openai_api_key}"}
+
+    # Установка таймаута для запроса
+    timeout = httpx.Timeout(10.0, connect=90.0)
+
+    async with httpx.AsyncClient(proxies=proxies, timeout=timeout) as client:
+        response = await client.post(
+            "https://api.openai.com/v1/chat/completions",
+            json=json_data,
+            headers=headers
+        )
+
+    if response.status_code == 200:
+        response_data = response.json()
+        rewritten_text = response_data['choices'][0]['message']['content']
+        return rewritten_text
+    else:
+        print(f"Ошибка запроса: {response.status_code} - {response.text}")
+        return None
+
+
 
 
 
@@ -565,11 +611,15 @@ async def add_channel(message: types.Message):
 async def remove_channel(message: types.Message):
     try:
         channel_id = int(message.get_args())
-        channels.discard(channel_id)
-        await message.reply(f"Канал {channel_id} удален")
+        if channel_id in channels:
+            del channels[channel_id]  # Удаляем, если ключ существует
+            await message.reply(f"Канал {channel_id} удален")
+        else:
+            await message.reply(f"Канал {channel_id} не найден")
         save_channels()
     except (ValueError, IndexError):
         await message.reply("Пожалуйста, укажите корректный ID канала: /remove_channel -1001234567890")
+
 
 
 @dp.message_handler(commands=['list_channels'])
@@ -590,19 +640,23 @@ async def add_destination_channel(message: types.Message):
         save_channels()
     except (ValueError, IndexError):
         await message.reply(
-            "Пожалуйста, укажите корректный ID канала-получателя: /add_destination_channel -10012342567890")
+            "Пожалуйста, укажите корректный ID канала-получателя: /add_destination_channel -1001234567890")
 
 
 @dp.message_handler(commands=['remove_destination_channel'])
 async def remove_destination_channel(message: types.Message):
     try:
         channel_id = int(message.get_args())
-        destination_channels.discard(channel_id)
-        await message.reply(f"Канал-получатель {channel_id} удален")
+        if channel_id in destination_channels:
+            del destination_channels[channel_id]  # Удаляем, если ключ существует
+            await message.reply(f"Канал-получатель {channel_id} удален")
+        else:
+            await message.reply(f"Канал-получатель {channel_id} не найден")
         save_channels()
     except (ValueError, IndexError):
         await message.reply(
-            "Пожалуйста, укажите корректный ID канала-получателя: /remove_destination_channel -10012234567890")
+            "Пожалуйста, укажите корректный ID канала-получателя: /remove_destination_channel -1001234567890")
+
 
 
 @dp.message_handler(commands=['list_destination_channels'])
@@ -621,7 +675,7 @@ async def set_channel_mapping(message: types.Message):
     args = message.get_args().split()
     if len(args) != 2:
         await message.reply(
-            "Пожалуйста, укажите ID канала-источника и ID канала-получателя через пробел: /set_channel_mapping -10014567890 -1000954321")
+            "Пожалуйста, укажите ID канала-источника и ID канала-получателя через пробел: /set_channel_mapping -1001234567890 -1000987654321")
         return
 
     try:
@@ -646,7 +700,7 @@ async def set_channel_mapping(message: types.Message):
 
     except (ValueError, IndexError):
         await message.reply(
-            "Пожалуйста, укажите корректные ID каналов: /set_channel_mapping -10034567890 -1001654321")
+            "Пожалуйста, укажите корректные ID каналов: /set_channel_mapping -1001234567890 -1000987654321")
     except Exception as e:
         await message.reply(f"Произошла ошибка: {e}")
 
@@ -667,7 +721,7 @@ async def send_last_messages_handler(message: types.Message):
                 limit = int(args[1])
         except ValueError:
             await message.reply(
-                "Пожалуйста, укажите корректные ID канала и количество сообщений: /last_messages -1001267890 5 или /last_messages -1001567890 all")
+                "Пожалуйста, укажите корректные ID канала и количество сообщений: /last_messages -1001234567890 5 или /last_messages -1001234567890 all")
             return
     elif len(args) == 1:
         try:
@@ -718,14 +772,14 @@ async def send_last_messages(channel_id=None, limit=None):
         for message_group in grouped_messages.values():
             if len(message_group) > 1 and message_group[0].grouped_id:
                 media_list = [msg.media for msg in message_group]
-                caption = "\n".join([replace_link(replace_at_word(msg.text, "@test"), new_link) for msg in message_group if msg.text])
+                caption = "\n".join([replace_link(replace_at_word(msg.text, replase_link), new_link) for msg in message_group if msg.text])
                 await client.send_file(destination_channel_id, media_list, caption=caption)
             else:
                 if message_group[0].media:
-                    updated_text = replace_link(replace_at_word(message_group[0].text, "@test"), new_link)
+                    updated_text = replace_link(replace_at_word(message_group[0].text, replase_link), new_link)
                     await client.send_file(destination_channel_id, message_group[0].media, caption=updated_text)
                 else:
-                    updated_text = replace_link(replace_at_word(message_group[0].text, "@test"), new_link)
+                    updated_text = replace_link(replace_at_word(message_group[0].text, replase_link), new_link)
                     if updated_text:
                         await client.send_message(destination_channel_id, updated_text)
 
@@ -744,7 +798,7 @@ async def send_last_messages_b_handler(message: types.Message):
                 limit = int(args[1])
         except ValueError:
             await message.reply(
-                "Пожалуйста, укажите корректные ID канала и количество сообщений: /last_messages_b -1001267890 5 или /last_messages_b -1004567890 all")
+                "Пожалуйста, укажите корректные ID канала и количество сообщений: /last_messages_b -1001234567890 5 или /last_messages_b -1001234567890 all")
             return
     elif len(args) == 1:
         try:
@@ -786,7 +840,7 @@ async def send_last_messages_b(channel_id=None, limit=None):
                 downloaded_media = await client.download_media(message.media)
                 await client.send_file(destination_channel_id, downloaded_media, caption=message.text)
             else:
-                updated_text = replace_link(replace_at_word(message.text, "@test"), new_link)
+                updated_text = replace_link(replace_at_word(message.text, replase_link), new_link)
                 if updated_text:
                     await client.send_message(destination_channel_id, updated_text)
 
