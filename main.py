@@ -368,12 +368,13 @@ def create_menu_keyboard():
 # Обработчик команды /start
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
+    if message.from_user.id != my_id:
+        return  # Ничего не делать, если ID пользователя не совпадает с my_id
+
     start_message = "Привет! Я бот для работы с каналами в Telegram. \n\n"
-
-    # Создаем клавиатуру с меню
     keyboard = create_menu_keyboard()
-
     await message.reply(start_message, reply_markup=keyboard)
+
 
 # Обработчик для кнопки "Модерация"
 @dp.callback_query_handler(lambda c: c.data == 'toggle_moderation')
@@ -578,6 +579,9 @@ async def process_callback_last_messages(callback_query: types.CallbackQuery):
 
 @dp.message_handler(commands=['help'])
 async def help(message: types.Message):
+    if message.from_user.id != my_id:
+        return  # Игнорировать сообщение, если ID пользователя не совпадает с my_id
+
     help_message = (
         "Список доступных команд:\n"
         "/start - Начало работы с ботом\n"
@@ -595,8 +599,13 @@ async def help(message: types.Message):
     await message.reply(help_message)
 
 
+
+
 @dp.message_handler(commands=['add_channel'])
 async def add_channel(message: types.Message):
+    if message.from_user.id != my_id:
+        return  # Игнорировать команду, если ID пользователя не совпадает с my_id
+
     try:
         channel_id = int(message.get_args())
         chat = await client.get_entity(channel_id)
@@ -607,31 +616,43 @@ async def add_channel(message: types.Message):
         await message.reply("Пожалуйста, укажите корректный ID канала: /add_channel -1001234567890")
 
 
+
 @dp.message_handler(commands=['remove_channel'])
 async def remove_channel(message: types.Message):
+    if message.from_user.id != my_id:
+        return  # Игнорировать команду, если ID пользователя не совпадает с my_id
+
     try:
         channel_id = int(message.get_args())
         if channel_id in channels:
             del channels[channel_id]  # Удаляем, если ключ существует
             await message.reply(f"Канал {channel_id} удален")
+            save_channels()
         else:
             await message.reply(f"Канал {channel_id} не найден")
-        save_channels()
     except (ValueError, IndexError):
         await message.reply("Пожалуйста, укажите корректный ID канала: /remove_channel -1001234567890")
 
 
 
+
 @dp.message_handler(commands=['list_channels'])
 async def list_channels(message: types.Message):
+    if message.from_user.id != my_id:
+        return  # Игнорировать команду, если ID пользователя не совпадает с my_id
+
     if channels:
         await message.reply('\n'.join(f"{name} ({id})" for id, name in channels.items()))
     else:
         await message.reply("Список каналов пуст")
 
 
+
 @dp.message_handler(commands=['add_destination_channel'])
 async def add_destination_channel(message: types.Message):
+    if message.from_user.id != my_id:
+        return  # Игнорировать команду, если ID пользователя не совпадает с my_id
+
     try:
         channel_id = int(message.get_args())
         chat = await client.get_entity(channel_id)
@@ -643,28 +664,37 @@ async def add_destination_channel(message: types.Message):
             "Пожалуйста, укажите корректный ID канала-получателя: /add_destination_channel -1001234567890")
 
 
+
 @dp.message_handler(commands=['remove_destination_channel'])
 async def remove_destination_channel(message: types.Message):
+    if message.from_user.id != my_id:
+        return  # Игнорировать команду, если ID пользователя не совпадает с my_id
+
     try:
         channel_id = int(message.get_args())
         if channel_id in destination_channels:
             del destination_channels[channel_id]  # Удаляем, если ключ существует
             await message.reply(f"Канал-получатель {channel_id} удален")
+            save_channels()
         else:
             await message.reply(f"Канал-получатель {channel_id} не найден")
-        save_channels()
     except (ValueError, IndexError):
         await message.reply(
             "Пожалуйста, укажите корректный ID канала-получателя: /remove_destination_channel -1001234567890")
 
 
 
+
 @dp.message_handler(commands=['list_destination_channels'])
 async def list_destination_channels(message: types.Message):
+    if message.from_user.id != my_id:
+        return  # Игнорировать команду, если ID пользователя не совпадает с my_id
+
     if destination_channels:
         await message.reply('\n'.join(f"{name} ({id})" for id, name in destination_channels.items()))
     else:
         await message.reply("Список каналов-получателей пуст")
+
 
 
 channel_mapping = dict()
@@ -672,6 +702,9 @@ channel_mapping = dict()
 
 @dp.message_handler(commands=['set_channel_mapping'])
 async def set_channel_mapping(message: types.Message):
+    if message.from_user.id != my_id:
+        return  # Игнорировать команду, если ID пользователя не совпадает с my_id
+
     args = message.get_args().split()
     if len(args) != 2:
         await message.reply(
@@ -708,6 +741,9 @@ async def set_channel_mapping(message: types.Message):
 
 @dp.message_handler(commands=['last_messages'])
 async def send_last_messages_handler(message: types.Message):
+    if message.from_user.id != my_id:
+        return  # Игнорировать команду, если ID пользователя не совпадает с my_id
+
     args = message.get_args().split()
     channel_id = None
     limit = 1
@@ -739,6 +775,7 @@ async def send_last_messages_handler(message: types.Message):
         await message.reply("Все сообщения отправлены!")
     else:
         await message.reply(f"{limit} последних сообщений отправлены!")
+
 
 
 async def send_last_messages(channel_id=None, limit=None):
