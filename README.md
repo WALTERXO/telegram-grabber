@@ -54,7 +54,8 @@ _В данный момент всё стабильно работает на п
 2. Получить api_id, api_hash. Сделать это можно на сайте [my.telegram.org](https://my.telegram.org/auth). Инструкция: https://www.youtube.com/watch?v=JBDnmEhvgac
 3. Задать переменные api_id, api_hash, bot_token и my_id в файле config.py.
 
-![image](https://github.com/WALTERXO/telegram-grabber/assets/91873172/610588b4-a6c2-48bf-8e23-229483b8176f)
+![image](https://github.com/WALTERXO/telegram-grabber/assets/91873172/e06a14e4-e2cc-4873-9f84-1b0ee28f654e)
+
 
 my_id брать в [Get My ID](https://t.me/getmyid_bot) отсюда (отправить в бот любое сообщение, он выдаст ваш id):
 
