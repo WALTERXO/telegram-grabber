@@ -1,7 +1,7 @@
 api_id = 
 api_hash = ''
 bot_token = ''
-my_id = ''
+my_id = 
 
 technical_channel_id =   # ID технического канала
 
