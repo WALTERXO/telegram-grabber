@@ -246,7 +246,7 @@ async def my_event_handler(event):
         return
 
     original_text = event.message.text
-    updated_text = replace_link(replace_at_word(original_text, replase_link), new_link)
+    updated_text = replace_link(replace_at_word(original_text, replace_link), new_link)
 
     if moderation_active:
         try:
@@ -266,9 +266,10 @@ async def my_event_handler(event):
                     InlineKeyboardButton("Рерайт текста", callback_data=f'rewrite_{sent_message.id}')
                 )
                 # Получаем информацию о канале из файла
-                destination_channel_id = channel_mapping[event.chat_id]
-                destination_channel_title, destination_channel_id = await get_destination_channel_info(destination_channel_id)
-                await bot.send_message(technical_channel_id, f"Выберите действие ({destination_channel_title} - ID {destination_channel_id}):", reply_markup=moderation_keyboard)
+                destination_channel_id = channel_mapping.get(event.chat_id, None)
+                if destination_channel_id is not None:
+                    destination_channel_title, _ = await get_destination_channel_info(destination_channel_id)
+                    await bot.send_message(technical_channel_id, f"Выберите действие ({destination_channel_title} - ID {destination_channel_id}):", reply_markup=moderation_keyboard)
             else:
                 # Обработка случая, когда нет медиа в сообщении
                 sent_message = await client.send_message(technical_channel_id, updated_text)
@@ -280,9 +281,10 @@ async def my_event_handler(event):
                     InlineKeyboardButton("Рерайт текста", callback_data=f'rewrite_{sent_message.id}')
                 )
                 # Получаем информацию о канале из файла
-                destination_channel_id = channel_mapping[event.chat_id]
-                destination_channel_title, destination_channel_id = await get_destination_channel_info(destination_channel_id)
-                await bot.send_message(technical_channel_id, f"Выберите действие ({destination_channel_title} - ID {destination_channel_id}):", reply_markup=moderation_keyboard)
+                destination_channel_id = channel_mapping.get(event.chat_id, None)
+                if destination_channel_id is not None:
+                    destination_channel_title, _ = await get_destination_channel_info(destination_channel_id)
+                    await bot.send_message(technical_channel_id, f"Выберите действие ({destination_channel_title} - ID {destination_channel_id}):", reply_markup=moderation_keyboard)
         except Exception as e:
             logger.error(f"Ошибка при отправке сообщения: {str(e)}")
         return
@@ -303,6 +305,8 @@ async def my_event_handler(event):
                 logger.info(f"Сообщение переслано: {original_text} из канала {source_channel_id} в канал {destination_channel_id}")
             except Exception as e:
                 logger.error(f"Ошибка при отправке сообщения: {str(e)}")
+
+
 
 
 
