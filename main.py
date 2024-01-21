@@ -130,26 +130,47 @@ async def process_send(callback_query: types.CallbackQuery):
     if message_id in message_storage:
         stored_message = message_storage[message_id]
 
+        # Извлечение ID канала из текста сообщения с клавиатуры модерации
+        match = re.search(r'ID (-?\d+)', callback_query.message.text)
+        if match:
+            destination_channel_id = int(match.group(1))
+        else:
+            # Обработка ошибки: ID канала не найден
+            await bot.answer_callback_query(callback_query.id, "Ошибка: ID канала не найден.")
+            return
+
         if isinstance(stored_message, list):  # Обработка альбома
             first_message_caption = stored_message[0].text
             media_group = [message.media for message in stored_message]
-            for destination_channel_id in destination_channels:
-                await client.send_file(destination_channel_id, media_group, caption=first_message_caption)
+            await client.send_file(destination_channel_id, media_group, caption=first_message_caption)
 
             # Удаление сообщений из технического канала
             message_ids = [msg.id for msg in stored_message]
             await client.delete_messages(technical_channel_id, message_ids)
         else:  # Обработка одиночного сообщения
-            for destination_channel_id in destination_channels:
-                await client.send_message(destination_channel_id, stored_message.text, file=stored_message.media)
+            # Отправка сообщения на канал с извлеченным ID
+            await client.send_message(destination_channel_id, stored_message.text, file=stored_message.media)
 
             # Удаление сообщения из технического канала
             await client.delete_messages(technical_channel_id, message_id)
+
         await client.delete_messages(callback_query.message.chat.id, callback_query.message.message_id)
         del message_storage[message_id]
         await bot.answer_callback_query(callback_query.id, "Сообщение(я) отправлено(ы) и удалено(ы).")
     else:
         await bot.answer_callback_query(callback_query.id, "Ошибка: Сообщение не найдено.")
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -210,6 +231,15 @@ async def process_edited(callback_query: types.CallbackQuery):
 
 
 
+
+
+async def get_destination_channel_info(destination_channel_id):
+    destination_channel = await client.get_entity(destination_channel_id)
+    if destination_channel:
+        return destination_channel.title, destination_channel_id
+    else:
+        return f"Канал с ID {destination_channel_id}", destination_channel_id
+
 @client.on(events.NewMessage(chats=channels))
 async def my_event_handler(event):
     if event.message.grouped_id:
@@ -235,7 +265,10 @@ async def my_event_handler(event):
                     InlineKeyboardButton("Отредактировано", callback_data=f'edited_{sent_message.id}'),
                     InlineKeyboardButton("Рерайт текста", callback_data=f'rewrite_{sent_message.id}')
                 )
-                await bot.send_message(technical_channel_id, "Выберите действие:", reply_markup=moderation_keyboard)
+                # Получаем информацию о канале из файла
+                destination_channel_id = channel_mapping[event.chat_id]
+                destination_channel_title, destination_channel_id = await get_destination_channel_info(destination_channel_id)
+                await bot.send_message(technical_channel_id, f"Выберите действие ({destination_channel_title} - ID {destination_channel_id}):", reply_markup=moderation_keyboard)
             else:
                 # Обработка случая, когда нет медиа в сообщении
                 sent_message = await client.send_message(technical_channel_id, updated_text)
@@ -246,7 +279,10 @@ async def my_event_handler(event):
                     InlineKeyboardButton("Отредактировано", callback_data=f'edited_{sent_message.id}'),
                     InlineKeyboardButton("Рерайт текста", callback_data=f'rewrite_{sent_message.id}')
                 )
-                await bot.send_message(technical_channel_id, "Выберите действие:", reply_markup=moderation_keyboard)
+                # Получаем информацию о канале из файла
+                destination_channel_id = channel_mapping[event.chat_id]
+                destination_channel_title, destination_channel_id = await get_destination_channel_info(destination_channel_id)
+                await bot.send_message(technical_channel_id, f"Выберите действие ({destination_channel_title} - ID {destination_channel_id}):", reply_markup=moderation_keyboard)
         except Exception as e:
             logger.error(f"Ошибка при отправке сообщения: {str(e)}")
         return
@@ -267,6 +303,9 @@ async def my_event_handler(event):
                 logger.info(f"Сообщение переслано: {original_text} из канала {source_channel_id} в канал {destination_channel_id}")
             except Exception as e:
                 logger.error(f"Ошибка при отправке сообщения: {str(e)}")
+
+
+
 
 
 
@@ -296,13 +335,18 @@ async def album_event_handler(event):
         # Сохраняем весь список сообщений для дальнейшего использования
         message_storage[last_message_id] = sent_messages
 
+        # Получаем информацию о канале из файла
+        destination_channel_id = channel_mapping[event.chat_id]
+        destination_channel_title, destination_channel_id = await get_destination_channel_info(destination_channel_id)
+        
+
         # Отправка кнопок после сообщения
         moderation_keyboard = InlineKeyboardMarkup(row_width=2).add(
             InlineKeyboardButton("Отправить", callback_data=f'send_{last_message_id}'),
             InlineKeyboardButton("Отклонить", callback_data=f'decline_{last_message_id}'),
             InlineKeyboardButton("Отредактировано", callback_data=f'edited_{last_message_id}')
         )
-        await bot.send_message(technical_channel_id, "Выберите действие:", reply_markup=moderation_keyboard)
+        await bot.send_message(technical_channel_id, f"Выберите действие ({destination_channel_title} - ID {destination_channel_id}):", reply_markup=moderation_keyboard)
         return
 
     for source_channel_id, destination_channel_id in channel_mapping.items():
