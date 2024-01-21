@@ -11,9 +11,10 @@ import pickle
 import re
 import sys
 from telethon import TelegramClient, events
-from telethon.tl.types import InputMessagesFilterPhotos, MessageMediaPhoto, MessageMediaDocument
+from telethon.tl.types import MessageMediaWebPage, MessageMediaPhoto, MessageMediaDocument
 from config import api_id, api_hash, bot_token, my_id, technical_channel_id, new_link, replase_link, proxy_url, openai_api_key
 import httpx
+
 
 
 
@@ -98,6 +99,10 @@ async def send_media(message, destination_channel_id, allow_forward=True):
 async def send_notification(message):
     chat_id = my_id 
     await bot.send_message(chat_id, message)
+
+
+
+bot_id = int(bot_token.split(':')[0])
 
 
 
@@ -205,8 +210,6 @@ async def process_edited(callback_query: types.CallbackQuery):
 
 
 
-
-
 @client.on(events.NewMessage(chats=channels))
 async def my_event_handler(event):
     if event.message.grouped_id:
@@ -216,28 +219,58 @@ async def my_event_handler(event):
     updated_text = replace_link(replace_at_word(original_text, replase_link), new_link)
 
     if moderation_active:
-        # Отправляем сообщение на технический канал для модерации
-        sent_message = await client.send_message(technical_channel_id, updated_text, file=event.message.media)
-        message_storage[sent_message.id] = sent_message  # Сохраняем сообщение для дальнейшей обработки
+        try:
+            if event.message.media:
+                if isinstance(event.message.media, MessageMediaWebPage):
+                    webpage_url = event.message.media.webpage.url
+                    updated_text_with_url = f"{updated_text}"
+                    sent_message = await client.send_message(technical_channel_id, updated_text_with_url)
+                else:
+                    sent_message = await client.send_message(technical_channel_id, updated_text, file=event.message.media)
 
-        # Добавляем кнопки модерации
-        moderation_keyboard = InlineKeyboardMarkup(row_width=3).add(
-            InlineKeyboardButton("Отправить", callback_data=f'send_{sent_message.id}'),
-            InlineKeyboardButton("Отклонить", callback_data=f'decline_{sent_message.id}'),
-            InlineKeyboardButton("Отредактировано", callback_data=f'edited_{sent_message.id}'),
-            InlineKeyboardButton("Рерайт текста", callback_data=f'rewrite_{sent_message.id}')
-        )
-        await bot.send_message(technical_channel_id, "Выберите действие:", reply_markup=moderation_keyboard)
+                message_storage[sent_message.id] = sent_message
+                moderation_keyboard = InlineKeyboardMarkup(row_width=3).add(
+                    InlineKeyboardButton("Отправить", callback_data=f'send_{sent_message.id}'),
+                    InlineKeyboardButton("Отклонить", callback_data=f'decline_{sent_message.id}'),
+                    InlineKeyboardButton("Отредактировано", callback_data=f'edited_{sent_message.id}'),
+                    InlineKeyboardButton("Рерайт текста", callback_data=f'rewrite_{sent_message.id}')
+                )
+                await bot.send_message(technical_channel_id, "Выберите действие:", reply_markup=moderation_keyboard)
+            else:
+                # Обработка случая, когда нет медиа в сообщении
+                sent_message = await client.send_message(technical_channel_id, updated_text)
+                message_storage[sent_message.id] = sent_message
+                moderation_keyboard = InlineKeyboardMarkup(row_width=3).add(
+                    InlineKeyboardButton("Отправить", callback_data=f'send_{sent_message.id}'),
+                    InlineKeyboardButton("Отклонить", callback_data=f'decline_{sent_message.id}'),
+                    InlineKeyboardButton("Отредактировано", callback_data=f'edited_{sent_message.id}'),
+                    InlineKeyboardButton("Рерайт текста", callback_data=f'rewrite_{sent_message.id}')
+                )
+                await bot.send_message(technical_channel_id, "Выберите действие:", reply_markup=moderation_keyboard)
+        except Exception as e:
+            logger.error(f"Ошибка при отправке сообщения: {str(e)}")
         return
 
-    # Обычная отправка сообщений в целевые каналы
-    for destination_channel_id in destination_channels:
-        if event.message.media:
-            await client.send_file(destination_channel_id, event.message.media, caption=updated_text)
-        else:
-            await client.send_message(destination_channel_id, updated_text)
+    for source_channel_id, destination_channel_id in channel_mapping.items():
+        if event.chat_id == source_channel_id:
+            try:
+                if event.message.media:
+                    if isinstance(event.message.media, MessageMediaWebPage):
+                        webpage_url = event.message.media.webpage.url
+                        updated_text_with_url = f"{updated_text}"
+                        await client.send_message(destination_channel_id, updated_text_with_url)
+                    else:
+                        await client.send_file(destination_channel_id, event.message.media, caption=updated_text)
+                else:
+                    await client.send_message(destination_channel_id, updated_text)
 
-    logger.info(f"Сообщение переслано: {original_text}")
+                logger.info(f"Сообщение переслано: {original_text} из канала {source_channel_id} в канал {destination_channel_id}")
+            except Exception as e:
+                logger.error(f"Ошибка при отправке сообщения: {str(e)}")
+
+
+
+
 
 
 
@@ -268,16 +301,23 @@ async def album_event_handler(event):
             InlineKeyboardButton("Отправить", callback_data=f'send_{last_message_id}'),
             InlineKeyboardButton("Отклонить", callback_data=f'decline_{last_message_id}'),
             InlineKeyboardButton("Отредактировано", callback_data=f'edited_{last_message_id}')
-            
-
         )
         await bot.send_message(technical_channel_id, "Выберите действие:", reply_markup=moderation_keyboard)
         return
 
-    for destination_channel_id in destination_channels:
-        await client.send_file(destination_channel_id, media_list, caption=updated_caption)
+    for source_channel_id, destination_channel_id in channel_mapping.items():
+        # Проверяем, что альбом пришел из нужного исходного канала
+        if event.chat_id == source_channel_id:
+            try:
+                await client.send_file(destination_channel_id, media_list, caption=updated_caption)
+                logger.info(f"Альбом переслан: {updated_caption}")
+            except Exception as e:
+                logger.error(f"Ошибка при отправке альбома: {str(e)}")
 
-    logger.info(f"Альбом переслан: {updated_caption}")
+
+            
+
+
 
 
 
@@ -348,6 +388,7 @@ def create_menu_keyboard():
     keyboard.add(InlineKeyboardButton("Удалить канал-получатель", callback_data='remove_destination_channel'))
     keyboard.add(InlineKeyboardButton("Показать список каналов-получателей", callback_data='list_destination_channels'))
     keyboard.add(InlineKeyboardButton("Установить соответствие между каналами", callback_data='set_channel_mapping'))
+    keyboard.add(InlineKeyboardButton("Показать соответствия", callback_data='show_mapping'))
     keyboard.add(InlineKeyboardButton("Удалить соответствие каналов", callback_data='remove_mapping'))
     keyboard.add(InlineKeyboardButton("Отправить последние сообщения", callback_data='last_messages'))
     keyboard.add(InlineKeyboardButton("Перезагрузить бота", callback_data='restart_bot'))
@@ -361,6 +402,25 @@ def create_menu_keyboard():
 
 
 
+@dp.callback_query_handler(lambda c: c.data == 'show_mapping')
+async def process_callback_show_mapping(callback_query: types.CallbackQuery):
+    await bot.answer_callback_query(callback_query.id)
+
+    try:
+        with open('channel_mapping.pickle', 'rb') as f:
+            loaded_mapping = pickle.load(f)
+
+        if loaded_mapping:
+            mapping_text = "\n".join(f"{channels[source]} ({source}) -> {destination_channels[destination]} ({destination})"
+                                     for source, destination in loaded_mapping.items())
+            await bot.send_message(callback_query.from_user.id, "Текущие соответствия каналов:\n" + mapping_text)
+        else:
+            await bot.send_message(callback_query.from_user.id, "Соответствий каналов пока нет.")
+    except FileNotFoundError:
+        await bot.send_message(callback_query.from_user.id, "Файл соответствий не найден.")
+    except Exception as e:
+        await bot.send_message(callback_query.from_user.id, f"Произошла ошибка при загрузке соответствий: {e}")
+
 
 
 
@@ -368,8 +428,8 @@ def create_menu_keyboard():
 # Обработчик команды /start
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
-    if message.from_user.id != my_id:
-        return  # Ничего не делать, если ID пользователя не совпадает с my_id
+    if message.from_user.id != my_id and message.from_user.id != bot_id:
+        return 
 
     start_message = "Привет! Я бот для работы с каналами в Telegram. \n\n"
     keyboard = create_menu_keyboard()
@@ -579,8 +639,8 @@ async def process_callback_last_messages(callback_query: types.CallbackQuery):
 
 @dp.message_handler(commands=['help'])
 async def help(message: types.Message):
-    if message.from_user.id != my_id:
-        return  # Игнорировать сообщение, если ID пользователя не совпадает с my_id
+    if message.from_user.id != my_id and message.from_user.id != bot_id:
+        return  
 
     help_message = (
         "Список доступных команд:\n"
@@ -603,8 +663,8 @@ async def help(message: types.Message):
 
 @dp.message_handler(commands=['add_channel'])
 async def add_channel(message: types.Message):
-    if message.from_user.id != my_id:
-        return  # Игнорировать команду, если ID пользователя не совпадает с my_id
+    if message.from_user.id != my_id and message.from_user.id != bot_id:
+        return  
 
     try:
         channel_id = int(message.get_args())
@@ -619,8 +679,8 @@ async def add_channel(message: types.Message):
 
 @dp.message_handler(commands=['remove_channel'])
 async def remove_channel(message: types.Message):
-    if message.from_user.id != my_id:
-        return  # Игнорировать команду, если ID пользователя не совпадает с my_id
+    if message.from_user.id != my_id and message.from_user.id != bot_id:
+        return  
 
     try:
         channel_id = int(message.get_args())
@@ -638,8 +698,8 @@ async def remove_channel(message: types.Message):
 
 @dp.message_handler(commands=['list_channels'])
 async def list_channels(message: types.Message):
-    if message.from_user.id != my_id:
-        return  # Игнорировать команду, если ID пользователя не совпадает с my_id
+    if message.from_user.id != my_id and message.from_user.id != bot_id:
+        return  
 
     if channels:
         await message.reply('\n'.join(f"{name} ({id})" for id, name in channels.items()))
@@ -650,8 +710,8 @@ async def list_channels(message: types.Message):
 
 @dp.message_handler(commands=['add_destination_channel'])
 async def add_destination_channel(message: types.Message):
-    if message.from_user.id != my_id:
-        return  # Игнорировать команду, если ID пользователя не совпадает с my_id
+    if message.from_user.id != my_id and message.from_user.id != bot_id:
+        return 
 
     try:
         channel_id = int(message.get_args())
@@ -667,8 +727,8 @@ async def add_destination_channel(message: types.Message):
 
 @dp.message_handler(commands=['remove_destination_channel'])
 async def remove_destination_channel(message: types.Message):
-    if message.from_user.id != my_id:
-        return  # Игнорировать команду, если ID пользователя не совпадает с my_id
+    if message.from_user.id != my_id and message.from_user.id != bot_id:
+        return 
 
     try:
         channel_id = int(message.get_args())
@@ -687,8 +747,8 @@ async def remove_destination_channel(message: types.Message):
 
 @dp.message_handler(commands=['list_destination_channels'])
 async def list_destination_channels(message: types.Message):
-    if message.from_user.id != my_id:
-        return  # Игнорировать команду, если ID пользователя не совпадает с my_id
+    if message.from_user.id != my_id and message.from_user.id != bot_id:
+        return 
 
     if destination_channels:
         await message.reply('\n'.join(f"{name} ({id})" for id, name in destination_channels.items()))
@@ -730,6 +790,13 @@ async def set_channel_mapping(message: types.Message):
         channel_mapping[source_channel_id] = destination_channel_id
         await message.reply(f"Канал {source_channel.title} ({source_channel_id}) теперь будет пересылать контент на канал {destination_channel.title} ({destination_channel_id})")
         save_channels()
+        
+        # Обновление соответствий в коде
+        try:
+            with open('channel_mapping.pickle', 'rb') as f:
+                channel_mapping = pickle.load(f)
+        except FileNotFoundError:
+            channel_mapping = {}
 
     except (ValueError, IndexError):
         await message.reply(
@@ -739,25 +806,26 @@ async def set_channel_mapping(message: types.Message):
 
 
 
+
 @dp.message_handler(commands=['last_messages'])
 async def send_last_messages_handler(message: types.Message):
-    if message.from_user.id != my_id:
-        return  # Игнорировать команду, если ID пользователя не совпадает с my_id
+    if message.from_user.id != my_id and message.from_user.id != bot_id:
+        return 
 
     args = message.get_args().split()
-    channel_id = None
+    source_channel_id = None
     limit = 1
 
     if len(args) == 2:
         try:
-            channel_id = int(args[0])
+            source_channel_id = int(args[0])
             if args[1].lower() == "all":
                 limit = None
             else:
                 limit = int(args[1])
         except ValueError:
             await message.reply(
-                "Пожалуйста, укажите корректные ID канала и количество сообщений: /last_messages -1001234567890 5 или /last_messages -1001234567890 all")
+                "Пожалуйста, укажите корректные ID исходного канала и количество сообщений: /last_messages -1001234567890 5 или /last_messages -1001234567890 all")
             return
     elif len(args) == 1:
         try:
@@ -770,25 +838,23 @@ async def send_last_messages_handler(message: types.Message):
                 "Пожалуйста, укажите корректное количество сообщений: /last_messages 5 или /last_messages all")
             return
 
-    await send_last_messages(channel_id, limit)
+    await send_last_messages(source_channel_id, limit)
     if limit is None:
         await message.reply("Все сообщения отправлены!")
     else:
         await message.reply(f"{limit} последних сообщений отправлены!")
 
-
-
-async def send_last_messages(channel_id=None, limit=None):
-    if channel_id is not None:
-        if channel_id in channels:
-            chat = await client.get_entity(channel_id)
-            messages = await client.get_messages(chat, limit=limit)
-        else:
+async def send_last_messages(source_channel_id=None, limit=None):
+    if source_channel_id is not None:
+        destination_channel_id = channel_mapping.get(source_channel_id, None)
+        if destination_channel_id is None:
             return
+        chat = await client.get_entity(source_channel_id)
+        messages = await client.get_messages(chat, limit=limit)
     else:
         messages = []
-        for channel_id in channels:
-            chat = await client.get_entity(channel_id)
+        for source_channel_id, destination_channel_id in channel_mapping.items():
+            chat = await client.get_entity(source_channel_id)
             channel_messages = await client.get_messages(chat, limit=limit)
             messages.extend(channel_messages)
 
@@ -812,13 +878,21 @@ async def send_last_messages(channel_id=None, limit=None):
                 caption = "\n".join([replace_link(replace_at_word(msg.text, replase_link), new_link) for msg in message_group if msg.text])
                 await client.send_file(destination_channel_id, media_list, caption=caption)
             else:
-                if message_group[0].media:
-                    updated_text = replace_link(replace_at_word(message_group[0].text, replase_link), new_link)
-                    await client.send_file(destination_channel_id, message_group[0].media, caption=updated_text)
-                else:
-                    updated_text = replace_link(replace_at_word(message_group[0].text, replase_link), new_link)
-                    if updated_text:
+                for msg in message_group:
+                    updated_text = replace_link(replace_at_word(msg.text, replase_link), new_link)
+                    if msg.media:
+                        if isinstance(msg.media, MessageMediaWebPage):
+                            # Если есть веб-страница, извлекаем ссылку и отправляем текстовое сообщение
+                            webpage_url = msg.media.webpage.url
+                            updated_text_with_url = f"{updated_text}"
+                            await client.send_message(destination_channel_id, updated_text_with_url)
+                        else:
+                            # Отправляем файл на целевой канал
+                            await client.send_file(destination_channel_id, msg.media, caption=updated_text)
+                    else:
+                        # Отправляем текстовое сообщение на целевой канал
                         await client.send_message(destination_channel_id, updated_text)
+
 
 @dp.message_handler(commands=['last_messages_b'])
 async def send_last_messages_b_handler(message: types.Message):
@@ -928,8 +1002,19 @@ async def restart_bot(message: types.Message):
 if __name__ == "__main__":
     async def main():
         try:
+            # Объявление переменной channel_mapping перед использованием
+            global channel_mapping
+            channel_mapping = {}
+
             # Отправка уведомления о запуске бота
             await send_notification("Бот запущен")
+
+            # Обновление соответствий каналов
+            try:
+                with open('channel_mapping.pickle', 'rb') as f:
+                    channel_mapping = pickle.load(f)
+            except FileNotFoundError:
+                pass
 
             await client.start()
             await client.connect()
