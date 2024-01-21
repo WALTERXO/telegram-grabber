@@ -757,11 +757,13 @@ async def list_destination_channels(message: types.Message):
 
 
 
-channel_mapping = dict()
+
 
 
 @dp.message_handler(commands=['set_channel_mapping'])
 async def set_channel_mapping(message: types.Message):
+    global channel_mapping
+
     if message.from_user.id != my_id:
         return  # Игнорировать команду, если ID пользователя не совпадает с my_id
 
