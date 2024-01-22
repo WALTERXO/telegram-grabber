@@ -12,7 +12,7 @@ import re
 import sys
 from telethon import TelegramClient, events
 from telethon.tl.types import MessageMediaWebPage, MessageMediaPhoto, MessageMediaDocument
-from config import api_id, api_hash, bot_token, my_id, technical_channel_id, new_link, replase_link, proxy_url, openai_api_key
+from config import api_id, api_hash, bot_token, my_id, technical_channel_id, new_link, proxy_url, openai_api_key, new_username 
 import httpx
 
 
@@ -246,7 +246,7 @@ async def my_event_handler(event):
         return
 
     original_text = event.message.text
-    updated_text = replace_link(replace_at_word(original_text, replace_link), new_link)
+    updated_text = replace_link(replace_at_word(original_text, new_username), new_link)
 
     if moderation_active:
         try:
@@ -326,7 +326,7 @@ async def album_event_handler(event):
 
     for message in grouped_media:
         original_text = message.text
-        updated_text = replace_link(replace_at_word(original_text, replase_link), new_link)
+        updated_text = replace_link(replace_at_word(original_text, new_username), new_link)
         updated_texts.append(updated_text)
         media_list.append(message.media)
 
@@ -925,11 +925,11 @@ async def send_last_messages(source_channel_id=None, limit=None):
         for message_group in grouped_messages.values():
             if len(message_group) > 1 and message_group[0].grouped_id:
                 media_list = [msg.media for msg in message_group]
-                caption = "\n".join([replace_link(replace_at_word(msg.text, replase_link), new_link) for msg in message_group if msg.text])
+                caption = "\n".join([replace_link(replace_at_word(msg.text, new_username), new_link) for msg in message_group if msg.text])
                 await client.send_file(destination_channel_id, media_list, caption=caption)
             else:
                 for msg in message_group:
-                    updated_text = replace_link(replace_at_word(msg.text, replase_link), new_link)
+                    updated_text = replace_link(replace_at_word(msg.text, new_username), new_link)
                     if msg.media:
                         if isinstance(msg.media, MessageMediaWebPage):
                             # Если есть веб-страница, извлекаем ссылку и отправляем текстовое сообщение
@@ -1001,7 +1001,7 @@ async def send_last_messages_b(channel_id=None, limit=None):
                 downloaded_media = await client.download_media(message.media)
                 await client.send_file(destination_channel_id, downloaded_media, caption=message.text)
             else:
-                updated_text = replace_link(replace_at_word(message.text, replase_link), new_link)
+                updated_text = replace_link(replace_at_word(message.text, new_username), new_link)
                 if updated_text:
                     await client.send_message(destination_channel_id, updated_text)
 
