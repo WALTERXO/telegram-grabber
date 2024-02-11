@@ -479,7 +479,7 @@ async def start(message: types.Message):
     if message.from_user.id != my_id and message.from_user.id != bot_id:
         return 
 
-    start_message = "Привет! Я бот для работы с каналами в Telegram. \n\n"
+    start_message = "Привет! Я бот для работы с каналами в Telegram. \n\n Подписывайтесь на наш телеграм канал: https://t.me/my_grab"
     keyboard = create_menu_keyboard()
     await message.reply(start_message, reply_markup=keyboard)
 
