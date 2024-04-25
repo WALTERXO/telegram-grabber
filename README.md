@@ -45,7 +45,7 @@ _В данный момент всё стабильно работает на п
 
 1. Создать телеграм-бота. Для этого нужно написать боту [BotFather](https://telegram.me/botfather) и следовать инструкциям. После этого сохраните токен бота.
 2. Получить api_id, api_hash. Сделать это можно на сайте [my.telegram.org](https://my.telegram.org/auth). Инструкция: https://www.youtube.com/watch?v=JBDnmEhvgac
-3. Задать переменные api_id, api_hash, bot_token и my_id в файле config.py.
+3. Задать переменные api_id, api_hash, bot_token и my_id в файле config.py. Также заполните id технического канала (Смотреть 6 пункт)
 
 ![image](https://github.com/WALTERXO/telegram-grabber/assets/91873172/e06a14e4-e2cc-4873-9f84-1b0ee28f654e)
 
